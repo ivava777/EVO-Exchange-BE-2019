@@ -7,8 +7,11 @@ import com.hillel.items_exchange.model.User;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.TypeToken;
+import org.modelmapper.convention.MatchingStrategies;
+import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
+import javax.persistence.EntityNotFoundException;
 import java.util.List;
 import java.util.Optional;
 
@@ -41,16 +44,21 @@ public class AdvertisementService {
         return mapAdvertisementToDto(advertisementRepository.save(adv));
     }
 
-    public AdvertisementDto updateAdvertisement(AdvertisementDto advertisementDto) {
-        Advertisement updatedAdvertisement = advertisementRepository.save(mapDtoToAdvertisement(advertisementDto));
+    public AdvertisementDto updateAdvertisement(AdvertisementDto dto) {
+        Advertisement toUpdate = mapDtoToAdvertisement(dto);
+        Advertisement fromDB = advertisementRepository.findById(dto.getId())
+                .orElseThrow(EntityNotFoundException::new);
+        BeanUtils.copyProperties(toUpdate, fromDB, "location", "user", "product", "created", "updated", "status");
+        Advertisement updatedAdvertisement = advertisementRepository.save(fromDB);
         return mapAdvertisementToDto(updatedAdvertisement);
     }
 
-    public void remove(AdvertisementDto advertisementDto) {
-        advertisementRepository.delete(mapDtoToAdvertisement(advertisementDto));
+    public void remove(Long id) {
+        advertisementRepository.delete(advertisementRepository.findById(id).orElseThrow(EntityNotFoundException::new));
     }
 
     private Advertisement mapDtoToAdvertisement(AdvertisementDto dto) {
+        modelMapper.getConfiguration().setMatchingStrategy(MatchingStrategies.LOOSE);
         return modelMapper.map(dto, Advertisement.class);
     }
 
